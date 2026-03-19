@@ -12,6 +12,7 @@ using CodeGamified.Bootstrap;
 using Royale.Game;
 using Royale.Scripting;
 using Royale.AI;
+using Royale.UI;
 
 namespace Royale.Core
 {
@@ -44,6 +45,12 @@ namespace Royale.Core
         [Header("AI")]
         public bool enableAI = true;
 
+        [Header("TUI")]
+        public bool enableTUI = true;
+
+        [Header("War Master")]
+        public WarMasterDifficulty warMasterDifficulty = WarMasterDifficulty.Tactical;
+
         [Header("Camera")]
         public bool configureCamera = true;
 
@@ -60,6 +67,10 @@ namespace Royale.Core
         private RoyaleInputProvider _inputProvider;
         private readonly List<RoyaleAIController> _aiControllers = new List<RoyaleAIController>();
         private readonly List<RoyalePlayer> _allPlayers = new List<RoyalePlayer>();
+
+        // War Master & TUI
+        private RoyaleWarMaster _warMaster;
+        private RoyaleTUIManager _tuiManager;
 
         // Camera
         private CameraAmbientMotion _cameraSway;
@@ -136,6 +147,8 @@ namespace Royale.Core
 
             if (enableScripting) CreatePlayerProgram();
             if (enableAI) CreateAIControllers();
+            CreateWarMaster();
+            if (enableTUI) CreateTUI();
 
             WireEvents();
             StartCoroutine(RunBootSequence());
@@ -339,6 +352,30 @@ namespace Royale.Core
         }
 
         // =================================================================
+        // WAR MASTER (fate controller — right panel)
+        // =================================================================
+
+        private void CreateWarMaster()
+        {
+            var go = new GameObject("WarMaster");
+            _warMaster = go.AddComponent<RoyaleWarMaster>();
+            _warMaster.Initialize(_match, _zone, warMasterDifficulty);
+            Log($"Created RoyaleWarMaster (difficulty: {warMasterDifficulty})");
+        }
+
+        // =================================================================
+        // TUI (dual-panel code debugger + status bar)
+        // =================================================================
+
+        private void CreateTUI()
+        {
+            var go = new GameObject("TUIManager");
+            _tuiManager = go.AddComponent<RoyaleTUIManager>();
+            _tuiManager.Initialize(_match, _playerProgram, _warMaster);
+            Log("Created RoyaleTUIManager (left=SURVIVAL, right=WAR MASTER, bottom=STATUS)");
+        }
+
+        // =================================================================
         // EVENT WIRING
         // =================================================================
 
@@ -359,6 +396,12 @@ namespace Royale.Core
                 _match.OnVictory += winner =>
                     Log($"VICTORY! Player #{winner.PlayerIndex} " +
                         $"({winner.kills} kills, scope {winner.scope})");
+
+                _match.OnAirdropSpawned += (x, z) =>
+                    Log($"AIRDROP at ({x:F0}, {z:F0})");
+
+                _match.OnAirstrikeSpawned += (x, z) =>
+                    Log($"AIRSTRIKE at ({x:F0}, {z:F0})");
             }
         }
 
@@ -384,6 +427,8 @@ namespace Royale.Core
             LogDivider();
             LogEnabled("Scripting", enableScripting);
             LogEnabled("AI       ", enableAI, $"{_aiControllers.Count} bots");
+            LogEnabled("TUI      ", enableTUI);
+            LogStatus("WAR MASTER", $"{warMasterDifficulty}");
             LogDivider();
             Log("Bootstrap complete. Write your survival code!");
 
