@@ -1,0 +1,3 @@
+[submodule "Royale/Assets/Engine"]
+	path = Royale/Assets/Engine
+	url = https://github.com/CodeGamified/.engine.git
